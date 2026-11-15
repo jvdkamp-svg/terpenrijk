@@ -409,6 +409,15 @@ details li{margin:3px 0}
  #top .row.sub #ups{display:none}
 }
 @media (max-width:359px){#top .res{gap:2px;padding:4px 1px}#top .res .ic{width:14px;height:14px}#top .res b{font-size:13px}#top .res.pop b{font-size:12px}}
+
+/* v12.4: het selectievak groeit niet mee met grote groepen; de portretjes scrollen */
+#sinf{box-sizing:border-box;max-height:calc(4*var(--gb,48px) + 22px)}
+#hud.mob #sinf{max-height:calc(4*44px + 15px)}
+#sinf:has(.mg){flex-direction:column;gap:4px;padding-right:8px}
+.mgh{display:flex;align-items:baseline;gap:8px;flex:none;font:600 12.5px var(--ui);color:#3a220c;padding-right:44px}.mgh span{font-weight:400;font-style:italic;color:#6a5030}
+.mg{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;align-content:start;padding-right:2px}
+#hud.mob .mg{padding-right:0}
+.mg::-webkit-scrollbar{width:6px}.mg::-webkit-scrollbar-thumb{background:rgba(90,64,36,.6);border-radius:3px}
 </style>
 </head>
 <body>
@@ -1331,7 +1340,7 @@ const bAge=t=>t==='hoeve'?0:BD[t]?BD[t].age|0:0,uAge=t=>Math.max(UD[t].age|0,UD[
 const RESL={weinig:{st:[100,100,50,60],n:.55,c:.8,ai:.85},normaal:{st:[200,200,100,150],n:1,c:1,ai:1},veel:{st:[500,500,300,300],n:1.7,c:1.3,ai:1.2}};
 const DIFF={makkelijk:{en:1,eco:.7},normaal:{en:2,eco:1},zwaar:{en:3,eco:1.35}}; // aanvalstijden staan in CFG.aanval
 // kaartgrootte (tegels per zijde) en aantal spelers; oude saves gebruiken nog OLD_SIZES
-const SIZES={klein:80,normaal:120,groot:160,enorm:240},OLD_SIZES={klein:64,normaal:80,groot:104},SIZEP={klein:[2,2,2],normaal:[2,4,4],groot:[4,6,6],enorm:[2,8,8]};
+const SIZES={klein:80,normaal:120,groot:160,enorm:240},OLD_SIZES={klein:64,normaal:80,groot:104},SIZEP={klein:[2,2,2],normaal:[2,4,4],groot:[2,6,6],enorm:[2,8,8]};
 const NP=()=>G?G.civs.length:4;
 const MAPN={vlakte:'Open vlakte',woud:'Woudland',rivier:'Rivierdal',kust:'Kustlijn',meer:'Meerland',eiland:'Eilanden',bergpas:'Bergpas',archipel:'Archipel',rand:'Willekeurig',
  fries:'Friesland',meren:'Merenland',wadden:'Waddenkust',berg:'Bergland',land:'Alleen land'}; // de laatste vijf alleen nog voor oude saves
@@ -1358,7 +1367,7 @@ const uMhp=(t,o)=>{const d=UD[t];let h=d.hp;if(t==='vil')h+=15*TK(o,'weefgetouw'
 const bMhp=(t,o)=>{let k=(1+UP.bhp.per*UL(o,'bhp'))*CFG.tijdperk.gebouwLeven[cAge(o)]*(1+.1*TK(o,'metsel')+.1*TK(o,'archi'));const d=BD[t];
  if(d.wall||d.gate||t==='toren'||t==='storen')k*=cb(o,'verdediging',1);if((t==='muur'||t==='vmuur'||t==='poort')&&TK(o,'p_vmuur'))k*=1.6;return Math.round(d.hp*k)};
 // snelheid nu: in een groep die samen loopt die van de traagste
-const spdNow=u=>u.gs&&u.st===1?Math.min(uSpd(u),u.gs):uSpd(u);
+const spdNow=u=>u.gs&&(u.st===1||(u.st===5&&u.tgt&&hyp(u.tgt.x-u.x,u.tgt.y-u.y)>5*32))?Math.min(uSpd(u),u.gs):uSpd(u);
 const uSpd=u=>{const d=UD[u.t],o=u.o;let s=d.spd*(d.mil?1+UP.spd.per*UL(o,'spd'):1);
  if(u.t==='vil')s*=1+.1*TK(o,'kruiwagen')+.1*TK(o,'handkar');if(isCav(u.t))s*=(1+.1*TK(o,'hoeder'))*cb(o,'cavSnel',1);if(isInf(u.t))s*=1+.1*TK(o,'schildkn');
  if(u.t==='monk')s*=1+.15*TK(o,'pelgrim');if(d.ship)s*=1+.15*TK(o,'droogdok');if(d.handel)s*=1+.5*TK(o,'karavaan');if(u.relic)s*=BAL.snelheid.relikwie;return s};
@@ -1611,8 +1620,10 @@ function updMasks(tx,ty){for(const[ox,oy]of[[0,0],[0,-1],[1,0],[0,1],[-1,0]]){co
   [[0,-1],[1,0],[0,1],[-1,0]].forEach(([dx,dy],k)=>{const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=W||ny>=H)return;const n=byId.get(M.bldAt[ny*W+nx]);if(isWall(n)&&n.o===b.o)m|=1<<k});
   b.mask=m;if(BD[b.t].gate)b.dir=(m&10)?0:(m&5)?1:b.dir}}
 function removeRes(e){e.dead=1;G.dirty=1;byId.delete(e.id);if(e.rt!=='fish'&&e.rt!=='carcass'){const i=e.ty*W+e.tx;M.blk[i]=0;M.resAt[i]=0;if(e.rt==='tree')G.stumps.push([e.x,e.y])}}
+// maximale bevolking per kaartgrootte (versie 12.4): klein 80, normaal 100, groot 150, enorm 200; oude kaarten 80
+const popMax=()=>W>=240?200:W>=160?150:W>=120?100:80;
 function census(){for(const c of G.civs){c.pop=0;c.cap=0;c.mil=0;c.nb=0}for(const u of G.units){if(u.dead||u.o<0||u.t==='sheep')continue;const c=G.civs[u.o];c.pop++;if(UD[u.t].mil)c.mil++}
- for(const b of G.blds){if(b.dead)continue;const c=G.civs[b.o];c.nb++;if(b.bp>=1&&(b.t==='hoeve'||b.t==='huis'))c.cap+=5}for(const c of G.civs)c.cap=Math.min(c.cap,80)}
+ for(const b of G.blds){if(b.dead)continue;const c=G.civs[b.o];c.nb++;if(b.bp>=1&&(b.t==='hoeve'||b.t==='huis'))c.cap+=5}for(const c of G.civs)c.cap=Math.min(c.cap,popMax())}
 
 // ---------- padvinding (A*, 8 richtingen, geen schuine stappen langs hoeken) ----------
 const DX=[1,-1,0,0,1,1,-1,-1],DY=[0,0,1,-1,1,-1,1,-1],PF={};
@@ -1702,15 +1713,15 @@ function exploreTick(u,dt){if(u.dead||u.o!==0||!EXPLORERS[u.t]){u.explore=0;retu
  const sk=u.exSk,ex=u.explore;oMove(u,nx*32+16,ny*32+16,0);u.explore=ex;u.exSk=sk;u.exG=t;u.exT=0}
 function setExplore(units,on){let n=0;for(const u of units){if(u.dead||u.o!==0||!EXPLORERS[u.t])continue;if(on){oStop(u);u.explore=1;u.exG=-1;u.exT=0;u.exSk={};n++}else{u.explore=0;if(u.st===1)oStop(u)}}return n}
 // een groep die samen loopt, gaat zo snel als de traagste (schepen en landeenheden elk apart)
-function groupSpeed(units){for(const sh of[0,1]){const g=units.filter(u=>u.st===1&&!u.dead&&!!UD[u.t].ship===!!sh);if(g.length<2)continue;const m=Math.min(...g.map(uSpd));for(const u of g)u.gs=m}}
+function groupSpeed(units){for(const u of units){u.gs0=0;u.gs=0}for(const sh of[0,1]){const g=units.filter(u=>(u.st===1||u.st===5)&&!u.dead&&!!UD[u.t].ship===!!sh);if(g.length<2)continue;const m=Math.min(...g.map(uSpd));for(const u of g){u.gs=m;u.gs0=m}}}
 function oStop(u){u.gs=0;u.st=0;u.path=null;u.pq=null;u.tgt=null;u.am=0;u.wp=null;u.ret=null;u.job='';u.fail=0;u.drop=null;u.pray=0}
-function oMove(u,x,y,am,keep){const wp=keep?u.wp:null;oStop(u);u.wp=wp;x=clamp(x,8,W*32-8);y=clamp(y,8,H*32-8);u.st=1;u.am=am?1:0;u.gx=x;u.gy=y;
+function oMove(u,x,y,am,keep){const wp=keep?u.wp:null;oStop(u);u.wp=wp;if(keep&&u.gs0)u.gs=u.gs0;x=clamp(x,8,W*32-8);y=clamp(y,8,H*32-8);u.st=1;u.am=am?1:0;u.gx=x;u.gy=y;
  let tx=x>>5,ty=y>>5;const sea=UD[u.t].ship;if(!(sea?passS(ty*W+tx):passL(ty*W+tx,u.o))){const n=nearFree(tx,ty,sea,u.o);if(n<0){u.st=0;return}tx=n%W;ty=(n/W)|0;u.gx=tx*32+16;u.gy=ty*32+16}
  u.pq={x0:tx,y0:ty,x1:tx,y1:ty,r:0,gx:u.gx,gy:u.gy}}
 const rKey=r=>r.k==='b'?'f':r.k==='u'?'f':RD[r.rt].k;
 function oGather(u,r){oStop(u);u.st=2;u.tgt=r;u.grt=r.k==='b'?'akker':r.k==='u'?(r.t==='sheep'?'sheep':'carcass'):r.rt;u.cv=r.k==='u'?(r.t==='hert'?1:r.t==='zwijn'?2:0):r.rt==='carcass'?r.v|0:0;u.gx0=r.x;u.gy0=r.y;u.job=rKey(r)}
 function oBuild(u,b){oStop(u);u.st=4;u.tgt=b;u.job='b'}
-function oAttack(u,e){oStop(u);u.st=5;u.tgt=e}
+function oAttack(u,e){oStop(u);u.st=5;u.tgt=e;if(u.gs0)u.gs=u.gs0}
 function oDrop(u,b){oStop(u);u.st=3;u.drop=b;u.job=u.ck}
 function oConvert(u,e){oStop(u);u.st=6;u.tgt=e}
 function oHeal(u,e){oStop(u);u.st=7;u.tgt=e}
@@ -1912,7 +1923,8 @@ function updUnit(u,dt){if(u.in)return;const d=UD[u.t];if(u.cd>0)u.cd-=dt;if(u.mv
  if(u.t==='sheep'){if(u.st===1){stuckCheck(u,dt);const f=follow(u,dt);if(f===1){u.st=0;u.path=null}else if(f===-1&&!u.pq){if((u.fail||0)>3){u.st=0;u.fail=0;u.path=null}else u.pq={x0:u.gx>>5,y0:u.gy>>5,x1:u.gx>>5,y1:u.gy>>5,r:0,gx:u.gx,gy:u.gy}}}if((G.tick+u.id)%12===0){let own=0,foe=null,fd=128;for(const v of G.units){if(v.dead||v.in||v.o<0||ANIMAL(v.t)||UD[v.t].ship)continue;const dd=hyp(v.x-u.x,v.y-u.y);if(dd>=128)continue;if(v.o===u.o)own=1;else if(dd<fd){fd=dd;foe=v}}if(foe&&!own){const was=u.o;u.o=foe.o;oStop(u);if(was===0)toast('Een schaap is door de vijand meegenomen','warn');else if(u.o===0)toast('Schaap gevonden','good')}}return}
  if(u.explore&&(G.tick+u.id)%8===0)exploreTick(u,dt*8);
  switch(u.st){
- case 0:if(d.mil&&!u.explore&&(G.tick+u.id)%10===0){const e=acquire(u,Math.max(d.sight*32,uRng(u))+16,u.o>0&&u.mis);if(e&&canHit(u,e)){u.tgt=e;u.st=5}}
+ case 0:if(u.gs0&&!(u.wp&&u.wp.length)){u.gs0=0;u.gs=0} // groep is aangekomen
+  if(d.mil&&!u.explore&&(G.tick+u.id)%10===0){const e=acquire(u,Math.max(d.sight*32,uRng(u))+16,u.o>0&&u.mis);if(e&&canHit(u,e)){u.tgt=e;u.st=5}}
   if(u.st===0&&u.wp&&u.wp.length){const p=u.wp.shift();oMove(u,p[0],p[1],1,true)}break;
  case 1:{if(d.mil&&u.am&&(G.tick+u.id)%10===0){const e=acquire(u,Math.max(d.sight*32,uRng(u))+16,u.br);if(e&&canHit(u,e)){u.ret=[u.gx,u.gy];u.tgt=e;u.st=5;u.path=null;u.pq=null;break}}
   const f=follow(u,dt);if(f===1){u.path=null;u.st=0;u.am=0;if(u.unl)unload(u)}else if(f===-1&&!u.pq){if((u.fail||0)>3){u.st=0;u.fail=0;if(u.unl)unload(u)}else u.pq={x0:u.gx>>5,y0:u.gy>>5,x1:u.gx>>5,y1:u.gy>>5,r:0,gx:u.gx,gy:u.gy}}break}
@@ -2042,7 +2054,7 @@ function aiTick(c){const o=c.id,D=DIFF[G.diff],P=CIVS[o],t=G.time,k=D.eco*RESL[G
  // zelfde tijdperkregels als de speler: elk gebouw pas in zijn eigen tijdperk (bldWhy), eerst wat nodig is voor het volgende tijdperk
  const isl=A.isl===undefined?(A.isl=aiNeedsShips(o)?1:0):A.isl;
  if(!own.unf&&own.hv){let want=null;const tw=cnt('toren')+cnt('storen'),ea=c.age|0,hasW=cnt('houtkamp')+cnt('opslag'),hasM=cnt('mijnkamp')+cnt('opslag');
-  if(c.pop+3>=c.cap&&c.cap<75)want='huis';else if(t>40&&cnt('akker')<2)want='akker';else if(t>85&&!cnt('molen'))want='molen';else if(t>110&&!hasW)want='houtkamp';else if(ecoOk&&!cnt('kazerne'))want='kazerne';
+  if(c.pop+3>=c.cap&&c.cap<popMax()-5)want='huis';else if(t>40&&cnt('akker')<2)want='akker';else if(t>85&&!cnt('molen'))want='molen';else if(t>110&&!hasW)want='houtkamp';else if(ecoOk&&!cnt('kazerne'))want='kazerne';
   else if(t>150&&!hasM)want='mijnkamp';else if((t>190||isl)&&M.hasWater&&!cnt('haven')&&!A.noHaven)want='haven';
   else if(ea>=1&&!cnt('smederij'))want='smederij';else if(ea>=1&&!cnt('schietbaan'))want='schietbaan';else if(ea>=1&&ecoOk&&!cnt('stal'))want='stal';
   else if(ea>=1&&t>230&&tw<Math.min(4,1+Math.floor(t/260)))want='toren';else if(ea>=2&&!cnt('kerk'))want='kerk';else if(ea>=2&&!cnt('kasteel'))want='kasteel';
@@ -2792,8 +2804,8 @@ const SI={atk:'<svg class="si" viewBox="0 0 16 16"><path d="M12.500 1.500 6 8l2 
  gar:'<svg class="si" viewBox="0 0 16 16"><circle cx="5" cy="5" r="2" fill="#d9c49a"/><circle cx="11" cy="5" r="2" fill="#d9c49a"/><path d="M1.500 13c0-3 7-3 7 0zM7.500 13c0-3 7-3 7 0z" fill="#d9c49a"/></svg>'};
 const hpBar=(hp,m)=>'<div class="hpb"><i style="width:'+clamp(hp/m*100,0,100)+'%;background:'+(hp/m>.5?'#5fbf4a':hp/m>.25?'#e0b33a':'#d4523a')+'"></i><span>'+Math.ceil(hp)+' / '+m+'</span></div>';
 function infoHTML(){const e=SEL[0];if(!e)return'<div class="sh">'+(touchUI()&&!R.mouseUI?'Tik':'Klik')+' op een eenheid of gebouw om het te selecteren.</div>';
- if(SEL.length>1){let h='<div class="mg">';for(const u of SEL.slice(0,40))h+='<button class="mp" data-a="one" data-v="'+u.id+'" title="'+uName(u.t,u.o)+'">'+(icn(uIcon(u.t))?'<img src="'+icn(uIcon(u.t))+'" alt="">':'<span>'+uName(u.t,u.o).slice(0,3)+'</span>')+'<i style="width:'+clamp(u.hp/u.mhp*100,0,100)+'%"></i></button>';
-  return h+(SEL.length>40?'<span class="more">+'+(SEL.length-40)+'</span>':'')+'</div>'}
+ if(SEL.length>1){let h='<div class="mgh"><b>'+SEL.length+' geselecteerd</b>'+(SEL.length>12?'<span>scroll voor meer</span>':'')+'</div><div class="mg">';for(const u of SEL.slice(0,200))h+='<button class="mp" data-a="one" data-v="'+u.id+'" title="'+uName(u.t,u.o)+'">'+(icn(uIcon(u.t))?'<img src="'+icn(uIcon(u.t))+'" alt="">':'<span>'+uName(u.t,u.o).slice(0,3)+'</span>')+'<i style="width:'+clamp(u.hp/u.mhp*100,0,100)+'%"></i></button>';
+  return h+(SEL.length>200?'<span class="more">+'+(SEL.length-200)+'</span>':'')+'</div>'}
  let por='',n='',sub='',stats='',extra='';const st=(k,v)=>'<span class="sv">'+SI[k]+v+'</span>';
  if(e.k==='u'){const d=UD[e.t];por=uIcon(e.t);n=uName(e.t,e.o);
   if(d.mil||e.t==='vil'){const ar=armOf(e);stats+=st('atk',Math.round(uAtk(e)*10)/10)+st('arm',ar[0])+st('prc',ar[1]);if(d.proj)stats+=st('rng',Math.round(uRng(e)/32*10)/10)}
@@ -2990,7 +3002,7 @@ function onClick(x,y,shift){if(!G||G.over||paused)return;const h=hitTest(x,y,tru
  if(!e){if(SEL.length){setSel([]);sfx('sel')}return}
  if(shift&&ownUnit(e)&&SEL.every(ownUnit)){const i=SEL.indexOf(e);setSel(i>=0?SEL.filter(u=>u!==e):SEL.concat([e]));sfx('sel');return}
  setSel([e]);sfx('sel')}
-function doOrder(h){const e=h.e,units=SEL.filter(u=>ownUnit(u)&&!u.dead&&!u.in);for(const u of units)u.explore=0;for(const u of units)if(u.t==='vil'){u.lock=1;u.vdK=''} // eigen taak: slotje, de verdeling blijft eraf
+function doOrder(h){const e=h.e,units=SEL.filter(u=>ownUnit(u)&&!u.dead&&!u.in);for(const u of units){u.explore=0;u.gs0=0}for(const u of units)if(u.t==='vil'){u.lock=1;u.vdK=''} // eigen taak: slotje, de verdeling blijft eraf
  if(!units.length){const b=SEL[0];if(b&&b.k==='b'&&b.o===0&&BD[b.t].train)setRally(b,h);return}
  // losse formatie: elke eenheid een eigen plek rond het punt (zonnebloemspiraal), op begaanbare grond
  const slot=(u,i,x,y)=>{const a=i*2.4,r=(UD[u.t].horse?26:21)*Math.sqrt(i);let px=clamp(x+Math.cos(a)*r,8,W*32-8),py=clamp(y+Math.sin(a)*r,8,H*32-8);if(!UD[u.t].ship&&!passL(tileI(px,py),0)){const n=nearFree(px>>5,py>>5,0,0,3);if(n>=0){px=(n%W)*32+16;py=((n/W)|0)*32+16}}return[px,py]};
@@ -3121,11 +3133,11 @@ function showMenu(kind){if(kind&&kind!=='opts'&&kind!=='load')menuPrev=kind;menu
  m.className=(isBg(kind)?'':'thin ')+kind;const mc=$('mc');let h='';const LOGO=typeof MEDIA!=='undefined'?'<img class="logo" src="'+MEDIA.logo+'" alt="Terpenrijk">':'<h1 class="logo-t">Terpenrijk</h1>';
  const seg=(key,opts)=>'<div class="seg" id="seg-'+key+'">'+opts.map(([v,n])=>'<button type="button" data-o="'+key+'" data-v="'+v+'" aria-pressed="'+(String(OPT[key])===String(v))+'"'+(String(OPT[key])===String(v)?' class="on"':'')+'>'+n+'</button>').join('')+'</div>';
  const back='<button class="back" data-m="back" aria-label="Terug"><svg viewBox="0 0 16 16"><path d="M10 3 5 8l5 5" stroke="currentColor" stroke-width="2" fill="none"/></svg>Terug</button>';
- if(kind==='title')h='<div class="ttl">'+LOGO+'<p class="tag">Een strijd om het terpenland aan de Noordzee</p><div class="tap"><i></i>'+(touchUI()?'Tik':'Klik')+' om te beginnen<i></i></div></div><div class="ver">Versie 12.3</div>';
+ if(kind==='title')h='<div class="ttl">'+LOGO+'<p class="tag">Een strijd om het terpenland aan de Noordzee</p><div class="tap"><i></i>'+(touchUI()?'Tik':'Klik')+' om te beginnen<i></i></div></div><div class="ver">Versie 12.4</div>';
  else if(kind==='load')h='<div class="ttl ld">'+LOGO+'<div class="lbar"><i></i></div><p class="tip"><b>Wist je dat…</b> '+TIPS[(Math.random()*TIPS.length)|0]+'</p></div>';
  else if(kind==='start'){const sv=saveInfo();h='<div class="main">'+LOGO+'<nav class="mm">';
   if(sv)h+='<button class="mb pri" data-m="cont"><span>Verder spelen</span><small>'+sv.map+' · '+sv.size+' · '+(DIFD[sv.diff]?DIFD[sv.diff][0].toLowerCase():sv.diff)+' · '+fmtT(sv.time)+'</small></button>';
-  h+='<button class="mb'+(sv?'':' pri')+'" data-m="setup"><span>Nieuw spel</span></button><button class="mb" data-m="help"><span>Zo speel je</span></button><button class="mb" data-m="opts"><span>Instellingen</span></button></nav></div><div class="ver">Versie 12.3 · muziek en beelden gemaakt met Higgsfield</div>'}
+  h+='<button class="mb'+(sv?'':' pri')+'" data-m="setup"><span>Nieuw spel</span></button><button class="mb" data-m="help"><span>Zo speel je</span></button><button class="mb" data-m="opts"><span>Instellingen</span></button></nav></div><div class="ver">Versie 12.4 · muziek en beelden gemaakt met Higgsfield</div>'}
  else if(kind==='setup'){h='<div class="card wide">'+back+'<h2>Nieuw spel</h2><div class="orn"></div><div class="lab">Kies je land</div><div class="maps">'+
    MAPS2.concat(['rand']).map(k=>'<button type="button" class="mapc'+(OPT.map===k?' on':'')+'" data-o="map" data-v="'+k+'" aria-pressed="'+(OPT.map===k)+'"'+(typeof MEDIA!=='undefined'?' style="background-image:url('+MEDIA.maps[k]+')"':'')+'><span><b>'+MAPN[k]+'</b><small>'+MAPD[k]+'</small></span></button>').join('')+'</div>'+
    '<div class="lab">Kies je beschaving</div><div class="civs">'+Object.keys(BAL.beschavingen).map(k=>{const c=BAL.beschavingen[k],u=UD[c.uu];return '<button type="button" class="civc'+(OPT.civ===k?' on':'')+'" data-o="civ" data-v="'+k+'" aria-pressed="'+(OPT.civ===k)+'">'+civFlag(k)+'<b>'+c.n+'</b><small>'+c.txt+'</small><em>Uniek: '+u.n+' · '+Object.values(BAL.onderzoek).find(q=>q.civ===k).n+'</em></button>'}).join('')+'</div><p class="note" style="margin:6px 0 0">De computervolken krijgen een willekeurige beschaving.</p>'+
@@ -3141,6 +3153,7 @@ function showMenu(kind){if(kind&&kind!=='opts'&&kind!=='load')menuPrev=kind;menu
    '<section><h3>Diplomatie</h3><p>Stuur geschenken, sluit vrede of een bondgenootschap. Je wint als alle vijanden verslagen zijn of iedereen je bondgenoot is.</p></section>'+
    '<section><h3>Bediening op de computer</h3><p><b>Linksklik</b> selecteert, linksklik op lege grond heft de selectie op. <b>Slepen met links</b> trekt een kader om je eenheden. <b>Rechtsklik</b> geeft de opdracht: lopen, aanvallen, verzamelen, bouwen of het verzamelpunt van een gebouw. Bouwen: het gebouw hangt aan de muis, één klik plaatst, <b>Shift</b> houdt plaatsen aan, rechtsklik of Esc stopt. Een muur: klik begin en eind. De kaart schuift met de pijltjes, de muis aan de rand, slepen met rechts of de minikaart (rechtsklik daarop stuurt je eenheden).</p></section>'+
    '<section><h3>Bediening op telefoon en tablet</h3><p>Slepen schuift de kaart, knijpen zoomt. Tik op een eenheid en daarna op een doel of de grond. Bouwen gaat in twee stappen: tik op de plek en kies <b>Plaatsen</b>.</p></section>'+
+   '<section><h3>Nieuw in versie 12.4</h3><p>Bij een grote selectie blijft het vak onderin even groot; je scrollt door de portretjes. Groepen houden ook bij een aanvalsloop en bij aanvallen op afstand het tempo van de traagste. Op grote kaarten kun je met 2 spelers spelen, en de maximale bevolking is hoger: normaal 100, groot 150, enorm 200.</p></section>'+
    '<section><h3>Nieuw in versie 12.3</h3><p><b>Automatisch verkennen</b>: selecteer een verkenner of lichte ruiter en kies Verkennen (kaart-icoon). Hij trekt zelf over de kaart tot alles wat hij kan bereiken ontdekt is, mijdt bekende vijandelijke torens en hoeves, vecht terug als hij wordt aangevallen en stopt vanzelf als hij klaar is. Een eigen opdracht zet het uit. <b>Groepen</b> die je samen ergens heen stuurt, lopen zo snel als de traagste, zodat ze bij elkaar blijven.</p></section>'+
    '<section><h3>Nieuw in versie 12.2</h3><p>Grondstoffen en bevolking staan op de telefoon op een eigen rij met grotere cijfers (vanaf 10.000 kort, bv. 23,5k; het volledige getal staat in de tooltip). Wild en wilde schapen komen niet meer in of tegen een bos te staan en vluchten of grazen er ook niet in. Nieuwe schapen in twee varianten; een schaap van jou heeft een verfmerk in je kleur op de rug.</p></section>'+
    '<section><h3>Nieuw in versie 12</h3><p><b>Nieuw onderpaneel</b>: links het opdrachtraster (een dorpeling toont Economische en Militaire gebouwen; onderaan vast Verzamelpunt, Stoppen, Verwijderen en Terug), in het midden portret, levensbalk en waarden, rechts de minikaart. <b>Informatie bij elke knop</b>: wijs met de muis een knop aan voor kosten (rood = tekort), tijd, effect en vereisten, en klik om te starten. Op telefoon en tablet starten trainen en bouwen met één tik; alleen bij onderzoek, upgrades en het volgende tijdperk opent eerst een kaart met een startknop. Lang indrukken toont bij elke knop de informatie. Het kruisje linksonder heft de selectie op, ook bij meerdere eenheden en met een ingeklapt paneel. De knop op de minikaart maakt hem groter of kleiner; op de telefoon sleep je de minikaart daarmee naar een andere hoek. <b>Annuleren</b>: tik of klik op een item in de wachtrij en je krijgt alles terug. <b>Schapen en andere bronnen</b>: is een schaap op, dan loopt de dorpeling zelf naar het volgende; dat geldt ook voor herten, zwijnen, bessen, vis, bomen en mijnen. <b>Nieuwe bomen</b>: eik, beuk, den, spar, berk en (aan de kust) palm, elk in vier varianten, met dichte bossen, een rommelige bosrand en een stronk na het kappen.</p></section>'+
@@ -3170,7 +3183,7 @@ function drawChart(){const cv=$('echart');if(!cv||!G||!G.hist)return;const c=cv.
  for(let i=0;i<=4;i++){const y=h-20-(h-34)*i/4;c.beginPath();c.moveTo(34,y);c.lineTo(w-6,y);c.stroke();c.fillText(Math.round(mx*i/4),2,y+4)}
  const dur=G.time,step=(w-44)/(n-1);for(let m=0;m<=dur;m+=Math.max(60,Math.ceil(dur/8/60)*60)){const x=38+(m/dur)*(w-44);c.fillText(Math.round(m/60)+'m',x-6,h-5)}
  H.forEach((a,o)=>{if(a.length<2)return;c.strokeStyle=CIVS[o].hex;c.lineWidth=o?2:3;c.beginPath();a.forEach((v,i)=>{const x=38+i*(w-44)/(a.length-1),y=h-20-(h-34)*v/mx;i?c.lineTo(x,y):c.moveTo(x,y)});c.stroke()})}
-const SIZET={klein:'80 × 80 tegels · 2 spelers',normaal:'120 × 120 tegels · 2 tot 4 spelers',groot:'160 × 160 tegels · 4 tot 6 spelers',enorm:'240 × 240 tegels · tot 8 spelers'};
+const SIZET={klein:'80 × 80 tegels · 2 spelers · max. 80 bevolking',normaal:'120 × 120 tegels · 2 tot 4 spelers · max. 100 bevolking',groot:'160 × 160 tegels · 2 tot 6 spelers · max. 150 bevolking',enorm:'240 × 240 tegels · 2 tot 8 spelers · max. 200 bevolking'};
 function playersSeg(){const P=SIZEP[OPT.size],o=[];for(let n=P[0];n<=P[1];n++)o.push(n);return '<div class="seg" id="seg-players">'+o.map(n=>'<button type="button" data-o="players" data-v="'+n+'" aria-pressed="'+(OPT.players===n)+'"'+(OPT.players===n?' class="on"':'')+'>'+n+'</button>').join('')+'</div>'}
 // een instelling wijzigen: geheugen + localStorage, en alleen de betrokken knoppen in het scherm bijwerken
 function setOpt(k,v){if(k==='players')v=+v;OPT[k]=v;store.set('terpen-'+k,String(v));
@@ -3259,7 +3272,7 @@ function bindInput(){const ov=$('ov'),P=new Map();let pan=null,pinch=0,pm=null,m
  $('q-home').onclick=()=>{const b=G.blds.find(b=>b.o===0&&b.t==='hoeve')||{x:M.bases[0][0]*32,y:M.bases[0][1]*32};G.cam.x=b.x;G.cam.y=b.y};
  const keys={};addEventListener('keydown',e=>{keys[e.key]=1;if(e.key==='Escape'){if(PL){PL=null;placeBar();uiDirty()}else if(RALLY){RALLY=false;uiDirty()}}if(e.key==='.'&&G&&!paused)$('q-idle').click()});addEventListener('keyup',e=>{keys[e.key]=0});R.keys=keys;
  addEventListener('visibilitychange',()=>{if(document.hidden&&G&&!G.over)saveGame(true)});
- addEventListener('gesturestart',e=>e.preventDefault());document.addEventListener('touchmove',e=>{if(e.target.closest&&!e.target.closest('#menu,.strip,#tasks'))e.preventDefault()},{passive:false})}
+ addEventListener('gesturestart',e=>e.preventDefault());document.addEventListener('touchmove',e=>{if(e.target.closest&&!e.target.closest('#menu,.strip,#tasks,.mg,#vdp'))e.preventDefault()},{passive:false})}
 
 // ---------- hoofdlus ----------
 let lastTs=0,ftAvg=16,ftN=0,hudT=0;
@@ -3274,7 +3287,7 @@ function loop(ts){requestAnimationFrame(loop);const raw=(ts-lastTs)/1000;lastTs=
 function boot(){R.ov=$('ov');R.oc=R.ov.getContext('2d');const mc=$('mini');R.mc=mc.getContext('2d');R.ms=mc.width;
  if(!glInit()){$('menu').hidden=true;$('nogl').hidden=false;return}
  setTimeout(()=>{try{genTextures();loadPhotoTex();buildModels();initRender();bindInput();showMenu(location.hash==='#dbg'?'start':'title');requestAnimationFrame(loop)}catch(e){$('menu').innerHTML='<div class="card"><h2>Er ging iets mis</h2><p class="sub">Het spel kon niet starten: '+String(e.message||e)+'</p></div>';throw e}},30);
- if(location.hash.indexOf('#dbg')===0)window.__T={setExplore,exploreTarget,groupSpeed,uSpd,EXPLORERS,treesNear,relocateAnimals,openTile,updGate,updMasks,census,ageReq,ageReady,bldWhy,setOpt,normOpt,SIZES,SIZEP,MAPS2,CIVS,get OPTS(){return OPT},sameIsl,islOf,aiNavalTick,mkRes,GR,KIT,vilJob,vilLoad,UD,nearFree,kill,canHit,ageUp,boxSelTest:null,TK,finishTech,startTech,techWhy,trainList,calcDmg,armOf,uAtk,unload,transCap,dropRelic,mkRelic,tradeGold,mktPrice,BAL,score,ST,relicsOf,placeClick,onClick,promoted,uCost,musWant,drawChart,civFlag,uModel,get RALLY(){return RALLY},showMenu,damage,uiDirty,oStop,STANCES,trade,hudTick,cAge,get MUS(){return MUS},get AU(){return AU},get G(){return G},get M(){return M},get R(){return R},get SEL(){return SEL},get PL(){return PL},update,render,newGame,startView,OPT,hitTest,w2s,pick,onTap,setSel,doOrder,oGather,oBuild,oMove,oAttack,oConvert,oHeal,placeBld,mkUnit,mkBld,findPath,validPlace,wallLine,gateOnWall,toggleGate,demolish,train,researchAge,saveGame,loadGame,setRel,gift,research,upCost,UL,CFG,uDmg,uRng,uSpd,tAtk,aiPlan,proposePeace,proposeAlly,byId:()=>byId,UD,BD,MESHES,hAt,passL,passS,tileI,startPlace,placeTap,confirmPlace,panelAct,computeVis,aiAttack,aiOwn,store}}
+ if(location.hash.indexOf('#dbg')===0)window.__T={popMax,setExplore,exploreTarget,groupSpeed,uSpd,EXPLORERS,treesNear,relocateAnimals,openTile,updGate,updMasks,census,ageReq,ageReady,bldWhy,setOpt,normOpt,SIZES,SIZEP,MAPS2,CIVS,get OPTS(){return OPT},sameIsl,islOf,aiNavalTick,mkRes,GR,KIT,vilJob,vilLoad,UD,nearFree,kill,canHit,ageUp,boxSelTest:null,TK,finishTech,startTech,techWhy,trainList,calcDmg,armOf,uAtk,unload,transCap,dropRelic,mkRelic,tradeGold,mktPrice,BAL,score,ST,relicsOf,placeClick,onClick,promoted,uCost,musWant,drawChart,civFlag,uModel,get RALLY(){return RALLY},showMenu,damage,uiDirty,oStop,STANCES,trade,hudTick,cAge,get MUS(){return MUS},get AU(){return AU},get G(){return G},get M(){return M},get R(){return R},get SEL(){return SEL},get PL(){return PL},update,render,newGame,startView,OPT,hitTest,w2s,pick,onTap,setSel,doOrder,oGather,oBuild,oMove,oAttack,oConvert,oHeal,placeBld,mkUnit,mkBld,findPath,validPlace,wallLine,gateOnWall,toggleGate,demolish,train,researchAge,saveGame,loadGame,setRel,gift,research,upCost,UL,CFG,uDmg,uRng,uSpd,tAtk,aiPlan,proposePeace,proposeAlly,byId:()=>byId,UD,BD,MESHES,hAt,passL,passS,tileI,startPlace,placeTap,confirmPlace,panelAct,computeVis,aiAttack,aiOwn,store}}
 boot();
 
 })();
