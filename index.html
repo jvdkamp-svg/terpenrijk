@@ -2338,8 +2338,11 @@ async function slotMigrate(){const raw=store.get(SAVE_KEY);if(!raw)return;let d;
  try{await slotPut(m,raw);store.del(SAVE_KEY)}catch(e){}}
 async function slotsBoot(){await slotMigrate();await slotList();if(menuKind==='start')showMenu('start')}
 // export en import als bestand
-async function slotExport(id){const m=SLOTS.find(s=>s.id===id);if(!m)return;const d=await slotGet(id);const blob=new Blob([JSON.stringify({terpenrijk:13,meta:m,data:d})],{type:'application/json'});
- const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='terpenrijk-'+m.name.replace(/[^\w\-]+/g,'_').slice(0,40)+'.json';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);toast('Opslagbestand geëxporteerd.','good')}
+async function slotExport(id){const m=SLOTS.find(s=>s.id===id);if(!m)return;const d=await slotGet(id);const txt=JSON.stringify({terpenrijk:13,meta:m,data:d}),fn='terpenrijk-'+m.name.replace(/[^\w\-]+/g,'_').slice(0,40)+'.json';
+ // in het Claude-artifact mag alleen de downloads-functie van de omgeving een bestand aanbieden
+ try{if(window.claude&&window.claude.use){const dl=await window.claude.use('downloads');if(dl){await dl.save({filename:fn,data:txt});toast('Opslagbestand geëxporteerd.','good');return}}}catch(e){toast('Exporteren is niet gelukt of geannuleerd.','warn');return}
+ const blob=new Blob([txt],{type:'application/json'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);toast('Opslagbestand geëxporteerd.','good')}
 async function slotImportText(txt){let o;try{o=JSON.parse(txt)}catch(e){o=null}let data,meta;
  if(o&&o.terpenrijk&&o.data){data=typeof o.data==='string'?o.data:JSON.stringify(o.data);meta=o.meta||{}}else if(o&&(o.v===1||o.v===2)&&o.civs){data=txt;meta={}}
  if(!data){toast('Dit bestand is geen opslagbestand van Terpenrijk.','bad');return false}let d;try{d=JSON.parse(data)}catch(e){toast('Het opslagbestand is beschadigd.','bad');return false}
