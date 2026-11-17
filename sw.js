@@ -1,5 +1,5 @@
 // Service worker: cache-first. Verhoog het versienummer bij elke update.
-const CACHE='terpenrijk-v13.3',FILES=['./','index.html','manifest.webmanifest','icon-180.png','icon-192.png','icon-512.png','icon-512-maskable.png','b13.bin','b13.webp','music/menu.m4a','music/t1a.m4a','music/t1b.m4a','music/t2a.m4a','music/t2b.m4a','music/t3a.m4a','music/t3b.m4a','music/t4a.m4a','music/t4b.m4a','music/g1.m4a','music/g2.m4a'];
+const CACHE='terpenrijk-v13.4',FILES=['./','index.html','manifest.webmanifest','icon-180.png','icon-192.png','icon-512.png','icon-512-maskable.png','music/menu.m4a','music/t1a.m4a','music/t1b.m4a','music/t2a.m4a','music/t2b.m4a','music/t3a.m4a','music/t3b.m4a','music/t4a.m4a','music/t4b.m4a','music/g1.m4a','music/g2.m4a'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request,{ignoreSearch:true}).then(r=>r||fetch(e.request).then(res=>{if(res.ok&&new URL(e.request.url).origin===location.origin){const cp=res.clone();caches.open(CACHE).then(c=>c.put(e.request,cp))}return res})))});
