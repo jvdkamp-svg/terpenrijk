@@ -9,8 +9,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Terpenrijk">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png?v=13.5">
+<link rel="apple-touch-icon" href="icon-180.png?v=13.5">
 <title>Terpenrijk</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
@@ -328,7 +328,7 @@ details li{margin:3px 0}
 .si{width:16px;height:16px;filter:drop-shadow(0 0 1px #2a1a0c)}.sv .ic{width:15px;height:15px}
 #sinf .sub{font:italic 13px var(--serif);color:#5a4428;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #sinf .desel{position:absolute;right:6px;top:6px;width:36px;height:36px;min-width:36px;min-height:36px;font-size:17px;border-width:1px}
-.qq{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px}
+.qq{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px;align-items:center}.qi .qn{position:absolute;left:2px;bottom:1px;font:700 12px/1 system-ui;font-style:normal;color:#fff;text-shadow:0 0 2px #000,0 0 2px #000;z-index:2}.qc{font-size:11px;opacity:.75;margin-left:2px}
 .qi{position:relative;width:40px;height:40px;padding:0;border-radius:4px;border:1px solid #5a4024;background:#3a2a1c;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.4)}
 .qi img{width:100%;height:100%;display:block}.qi span{font:600 10px var(--ui);color:#f0e5cd}
 .qi i{position:absolute;left:0;bottom:0;height:5px;background:var(--blue);box-shadow:0 0 0 1px rgba(0,0,0,.6)}
@@ -2252,7 +2252,8 @@ function demolish(b){if(b.t==='hoeve')return;if(b.bp<1){refund(b.o,BD[b.t].cost)
 function trainList(b){const o=b.o,c=G.civs[o],out=[];for(const t0 of BD[b.t].train||[]){let t=t0;if(t==='uu'){const uu=civOf(o).uu;if(UD[uu].b!=='kasteel')continue;t=uu}
   if(t==='kaper'&&civOf(o).uu!=='kaper')continue;out.push([t0,promoted(o,t)])}return out}
 function trainWhy(o,t){const d=UD[t],c=G.civs[o],a=uAge(t);if(a>c.age)return'Vereist tijdperk '+(a+1);if(t==='kaper'&&!G.blds.some(b=>!b.dead&&b.o===o&&b.t==='kasteel'&&b.bp>=1))return'Vraagt een kasteel';return''}
-function train(b,t){const o=b.o,c=G.civs[o];if(t==='uu')t=civOf(o).uu;t=promoted(o,t);const d=UD[t],cost=uCost(o,t);if(b.bp<1||b.q.length>=5)return'De wachtrij is vol';const w=trainWhy(o,t);if(w)return w;
+const QMAX=20; // versie 13.5: maximaal 20 opdrachten in de wachtrij per gebouw (was 5)
+function train(b,t){const o=b.o,c=G.civs[o];if(t==='uu')t=civOf(o).uu;t=promoted(o,t);const d=UD[t],cost=uCost(o,t);if(b.bp<1||b.q.length>=QMAX)return'De wachtrij is vol';const w=trainWhy(o,t);if(w)return w;
  if(!canAfford(o,cost))return'Niet genoeg '+lack(o,cost);pay(o,cost);b.q.push({t,p:0,c:cost});return''}
 function lack(o,c){const s=G.civs[o].stock;return Object.keys(c).filter(k=>s[k]<c[k]).map(k=>RNAME[k]).join(' en ')}
 // voorwaarden voor het volgende tijdperk: [[voldaan, tekst], ...] (gebouwen moeten af zijn, en de grondstoffen)
@@ -2272,7 +2273,7 @@ function upQueued(o,k){let n=0;for(const b of G.blds)if(!b.dead&&b.o===o&&b.t===
 // het laboratorium komt in tijdperk 2: niveau 1 vraagt tijdperk 2, niveau 2 en 3 vragen tijdperk 3 (geeft het vereiste tijdperk-1 terug, of -1)
 const upLock=(o,k)=>{const lv=UL(o,k)+upQueued(o,k),need=Math.min(2,lv+1);return lv<3&&need>cAge(o)?need:-1};
 function upCost(o,k){const lv=UL(o,k)+upQueued(o,k);if(lv>=3)return null;const f=CFG.lab.niveauFactor[lv],c=UP[k].kosten,r={};for(const x in c)r[x]=Math.round(c[x]*f/5)*5;return r}
-function research(b,k){if(b.bp<1||!UP[k])return'';if(b.q.length>=5)return'De wachtrij is vol';const c=upCost(b.o,k);if(!c)return UP[k].n+' is al op het hoogste niveau';{const L=upLock(b.o,k);if(L>=0)return'Vereist tijdperk '+(L+1)}
+function research(b,k){if(b.bp<1||!UP[k])return'';if(b.q.length>=QMAX)return'De wachtrij is vol';const c=upCost(b.o,k);if(!c)return UP[k].n+' is al op het hoogste niveau';{const L=upLock(b.o,k);if(L>=0)return'Vereist tijdperk '+(L+1)}
  if(!canAfford(b.o,c))return'Nog nodig: '+short(b.o,c);pay(b.o,c);b.q.push({t:'up',u:k,lv:UL(b.o,k)+upQueued(b.o,k)+1,c,p:0});return''}
 function short(o,c){const s=G.civs[o].stock;return Object.keys(c).filter(k=>s[k]<c[k]).map(k=>Math.ceil(c[k]-s[k])+' '+RNAME[k]).join(' en ')}
 function finishUp(o,k){const c=G.civs[o];c.up=c.up||{};c.up[k]=Math.min(3,(c.up[k]|0)+1);
@@ -2285,7 +2286,7 @@ function techQueued(o,k){for(const b of G.blds)if(!b.dead&&b.o===o)for(const q o
 function techWhy(o,k){const q=BAL.onderzoek[k],c=G.civs[o];if(!q)return'Onbekend';if(TK(o,k))return'Al onderzocht';if(techQueued(o,k))return'Wordt al onderzocht';
  if(q.civ&&G.civs[o].civ!==q.civ)return'Alleen voor de '+BAL.beschavingen[q.civ].n;if(qAge(q)>c.age)return'Vereist tijdperk '+(qAge(q)+1);if(q.na&&!TK(o,q.na))return'Eerst '+BAL.onderzoek[q.na].n;
  if(!G.blds.some(b=>!b.dead&&b.o===o&&(b.t===q.b||(b.t==='opslag'&&(q.b==='houtkamp'||q.b==='mijnkamp')))&&b.bp>=1))return'Bouw eerst een '+BD[q.b].n.toLowerCase();return''}
-function startTech(b,k){const o=b.o,q=BAL.onderzoek[k];if(!q||b.bp<1)return'';if(b.q.length>=5)return'De wachtrij is vol';if(b.t!==q.b&&!BD[b.t].lab&&!(b.t==='opslag'&&(q.b==='houtkamp'||q.b==='mijnkamp')))return'';const w=techWhy(o,k);if(w)return w;
+function startTech(b,k){const o=b.o,q=BAL.onderzoek[k];if(!q||b.bp<1)return'';if(b.q.length>=QMAX)return'De wachtrij is vol';if(b.t!==q.b&&!BD[b.t].lab&&!(b.t==='opslag'&&(q.b==='houtkamp'||q.b==='mijnkamp')))return'';const w=techWhy(o,k);if(w)return w;
  if(!canAfford(o,q.kost))return'Nog nodig: '+short(o,q.kost);pay(o,q.kost);b.q.push({t:'tech',k,c:q.kost,p:0});return''}
 function finishTech(o,k){const c=G.civs[o],q=BAL.onderzoek[k];c.tech=c.tech||{};c.tech[k]=1;ST(o).tech++;
  if(q.promo){const to=promoted(o,q.promo);for(const u of G.units)if(!u.dead&&u.o===o&&u.t!==to&&promoted(o,u.t)===to&&BAL.promoties[u.t]){const f=u.hp/u.mhp;u.t=to;u.mhp=uMhp(to,o);u.hp=Math.max(1,u.mhp*f)}}
@@ -3529,7 +3530,9 @@ function infoHTML(){const e=SEL[0];if(!e)return'<div class="sh">'+(touchUI()&&!R
  else if(e.k==='b'){const d=BD[e.t];por=bIcon(e.t);n=bName(e.t,e.o);const ar=armOf(e);stats+=st('arm',ar[0])+st('prc',ar[1]);if(d.atk&&e.bp>=1){const a=tAtk(e);stats+=st('atk',Math.round(a.d*10)/10)+st('rng',Math.round(a.r/32*10)/10)}
   if(d.field)stats+='<span class="sv">'+ic('f')+Math.ceil(e.food)+'</span>';if(e.t==='kerk'){const r=(G.relics||[]).filter(x=>x.b===e.id).length;stats+='<span class="sv">'+ic('rel')+r+'</span>'}
   sub=e.o>0?CIVS[e.o].n:e.bp<1?'in aanbouw · '+Math.floor(e.bp*100)+'%':d.gate?(e.open?'open':'dicht'):e.wait?'bouw meer huizen':'';
-  if(e.o===0&&e.q.length)extra='<div class="qq">'+e.q.map((q,i)=>{const k=q.t==='age'?'c_age':q.t==='up'?'up_'+q.u:q.t==='tech'?tIcon(q.k):uIcon(q.t);return '<button class="qi" data-a="cancel" data-v="'+i+'" title="'+qName(q)+' — klik om te annuleren (alles terug)">'+(icn(k)?'<img src="'+icn(k)+'" alt="">':'<span>'+qName(q).slice(0,3)+'</span>')+(i===0?'<i style="width:'+Math.floor(q.p*100)+'%"></i>':'')+'<b>✕</b></button>'}).join('')+'</div>';
+  if(e.o===0&&e.q.length){// versie 13.5: gelijke opdrachten na elkaar als één stapel met aantal; klik annuleert de laatste van de stapel
+   const key=q=>q.t==='age'?'c_age':q.t==='up'?'up_'+q.u:q.t==='tech'?tIcon(q.k):uIcon(q.t),G2=[];e.q.forEach((q,i)=>{const k=key(q),L=G2[G2.length-1];if(L&&L.k===k&&L.i>0)L.n++,L.last=i;else G2.push({k,q,i,last:i,n:1})});
+   extra='<div class="qq">'+G2.map(g=>{const q=g.q,k=g.k;return '<button class="qi" data-a="cancel" data-v="'+g.last+'" title="'+qName(q)+(g.n>1?' ×'+g.n:'')+' — klik om er één te annuleren (alles terug)">'+(icn(k)?'<img src="'+icn(k)+'" alt="">':'<span>'+qName(q).slice(0,3)+'</span>')+(g.i===0?'<i style="width:'+Math.floor(q.p*100)+'%"></i>':'')+(g.n>1?'<em class="qn">'+g.n+'</em>':'')+'<b>✕</b></button>'}).join('')+'<span class="qc">'+e.q.length+'/'+QMAX+'</span></div>'}
   if(e.o===0&&e.t==='hoeve'&&e.bp>=1&&G.civs[0].age<MAXAGE&&!e.q.some(q=>q.t==='age'))extra+='<div class="arq">'+ageReq(0).map(r=>'<i class="'+(r[0]?'ok':'no')+'">'+(r[0]?'✔ ':'✘ ')+r[1]+'</i>').join('')+'</div>'}
  else if(e.k==='r'){n=e.rt==='carcass'?(['Schaap','Hert','Wild zwijn'][e.v|0]):RD[e.rt].n;por=e.rt==='tree'?'b_houtkamp':e.rt==='gold'||e.rt==='stone'?'b_mijnkamp':'b_molen';sub=e.rt==='fish'?'voedsel voor vissersboten':Math.ceil(e.amt)+' '+RNAME[RD[e.rt].k]}
  else if(e.k==='rl'){n='Relikwie';por='c_relic';sub='Alleen een monnik kan hem oppakken.'}
